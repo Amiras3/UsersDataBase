@@ -15,8 +15,6 @@ namespace UsersDataBase
         private RedisClient _robotsCache;
         private SessionsRepository _sessionsManager;
 
-        public int ID { get; private set; }
-
         public RobotsRepository(UsersDbContext usersDbContext, RedisClient robotsCache,
             SessionsRepository sessionsManager)
         {
