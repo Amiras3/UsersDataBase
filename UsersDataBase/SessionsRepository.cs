@@ -54,6 +54,8 @@ namespace UsersDataBase
             session = entity;
 
             await _usersDbContext.SaveChangesAsync();
+
+            _sessionsCache.SetValue(entity.ID.ToString(), entity.ToJson());
         }
 
         public async Task DeleteAsync(int id)

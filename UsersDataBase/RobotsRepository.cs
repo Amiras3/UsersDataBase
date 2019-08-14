@@ -59,6 +59,8 @@ namespace UsersDataBase
             robot = entity;
 
             await _usersDbContext.SaveChangesAsync();
+
+            _robotsCache.SetValue(entity.ID.ToString(), entity.ToJson());
         }
 
         public async Task DeleteAsync(int id)
