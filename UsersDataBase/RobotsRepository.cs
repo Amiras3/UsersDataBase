@@ -9,23 +9,23 @@ using System.Threading.Tasks;
 
 namespace UsersDataBase
 {
-    public class RobotsManager : IRepository<Robot>
+    public class RobotsRepository : IRepository<Robot>
     {
         private UsersDbContext _usersDbContext;
         private RedisClient _robotsCache;
-        private SessionsManager _sessionsManager;
+        private SessionsRepository _sessionsManager;
 
         public int ID { get; private set; }
 
-        public RobotsManager(UsersDbContext usersDbContext, RedisClient robotsCache,
-            SessionsManager sessionsManager)
+        public RobotsRepository(UsersDbContext usersDbContext, RedisClient robotsCache,
+            SessionsRepository sessionsManager)
         {
             _usersDbContext = usersDbContext;
             _robotsCache = robotsCache;
             _sessionsManager = sessionsManager;
         }
 
-        public async Task<Robot> Get(int id)
+        public async Task<Robot> GetAsync(int id)
         {
             var cachedRobot = _robotsCache.GetValue(id.ToString())
                 .FromJson<Robot>();
@@ -43,16 +43,25 @@ namespace UsersDataBase
             return robot;
         }
 
-        public async Task Post(Robot entity)
+        public async Task PostAsync(Robot entity)
         {
-            _robotsCache.SetValue(entity.ID.ToString(), entity.ToJson());
-
             _usersDbContext.Robots.Add(entity);
+
+            await _usersDbContext.SaveChangesAsync();
+
+            _robotsCache.SetValue(entity.ID.ToString(), entity.ToJson());
+        }
+
+        public async Task UpdateAsync(Robot entity)
+        {
+            var robot = await _usersDbContext.Robots.FirstOrDefaultAsync(r => r.ID == entity.ID);
+
+            robot = entity;
 
             await _usersDbContext.SaveChangesAsync();
         }
 
-        public async Task Delete(int id)
+        public async Task DeleteAsync(int id)
         {
             var sessionsIds = await _usersDbContext.Sessions.Join(
                 _usersDbContext.Robots.Where(r => r.ID == id),
@@ -68,7 +77,7 @@ namespace UsersDataBase
             {
                 foreach(var sessionId in sessionsIds)
                 {
-                    await _sessionsManager.Delete(sessionId);
+                    await _sessionsManager.DeleteAsync(sessionId);
                 }
             }
 
@@ -76,11 +85,11 @@ namespace UsersDataBase
 
             if(robot != null)
             {
-                _robotsCache.Remove(id.ToString());
-
                 _usersDbContext.Robots.Remove(robot);
 
                 await _usersDbContext.SaveChangesAsync();
+
+                _robotsCache.Remove(id.ToString());
             }
         }
     }

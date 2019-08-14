@@ -9,18 +9,18 @@ using System.Threading.Tasks;
 
 namespace UsersDataBase
 {
-    public class SessionsManager : IRepository<Session>
+    public class SessionsRepository : IRepository<Session>
     {
         private UsersDbContext _usersDbContext;
         private RedisClient _sessionsCache;
 
-        public SessionsManager(UsersDbContext usersDbContext, RedisClient sessionsCache)
+        public SessionsRepository(UsersDbContext usersDbContext, RedisClient sessionsCache)
         {
             _usersDbContext = usersDbContext;
             _sessionsCache = sessionsCache;
         }
 
-        public async Task<Session> Get(int id)
+        public async Task<Session> GetAsync(int id)
         {
             var cachedSession = _sessionsCache.GetValue(id.ToString())
                 .FromJson<Session>();
@@ -38,26 +38,35 @@ namespace UsersDataBase
             return session;
         }
 
-        public async Task Post(Session entity)
+        public async Task PostAsync(Session entity)
         {
-            _sessionsCache.SetValue(entity.ID.ToString(), entity.ToJson());
-
             _usersDbContext.Sessions.Add(entity);
+
+            await _usersDbContext.SaveChangesAsync();
+
+            _sessionsCache.SetValue(entity.ID.ToString(), entity.ToJson());
+        }
+
+        public async Task UpdateAsync(Session entity)
+        {
+            var session = await _usersDbContext.Sessions.FirstOrDefaultAsync(s => s.ID == entity.ID);
+
+            session = entity;
 
             await _usersDbContext.SaveChangesAsync();
         }
 
-        public async Task Delete(int id)
+        public async Task DeleteAsync(int id)
         {
             var session = await _usersDbContext.Sessions.FirstOrDefaultAsync(s => s.ID == id);
 
             if (session != null)
             {
-                _sessionsCache.Remove(id.ToString());
-
                 _usersDbContext.Sessions.Remove(session);
 
                 await _usersDbContext.SaveChangesAsync();
+
+                _sessionsCache.Remove(id.ToString());
             }
         }
     }

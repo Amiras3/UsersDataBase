@@ -8,10 +8,12 @@ namespace UsersDataBase
 {
     public interface IRepository<T>
     {
-        Task<T> Get(int id);
+        Task<T> GetAsync(int id);
 
-        Task Post(T entity);
+        Task PostAsync(T entity);
 
-        Task Delete(int id);
+        Task DeleteAsync(int id);
+
+        Task UpdateAsync(T entity);
     }
 }

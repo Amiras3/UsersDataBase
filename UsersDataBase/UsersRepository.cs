@@ -9,21 +9,21 @@ using System.Threading.Tasks;
 
 namespace UsersDataBase
 {
-    public class UsersManager : IRepository<User>
+    public class UsersRepository : IRepository<User>
     {
         private UsersDbContext _usersDbContext;
         private RedisClient _usersCache;
-        private RobotsManager _robotsManager;
+        private RobotsRepository _robotsManager;
 
-        public UsersManager(UsersDbContext usersDbContext, RedisClient usersCache,
-            RobotsManager robotsManager)
+        public UsersRepository(UsersDbContext usersDbContext, RedisClient usersCache,
+            RobotsRepository robotsManager)
         {
             _usersDbContext = usersDbContext;
             _usersCache = usersCache;
             _robotsManager = robotsManager;
         }
 
-        public async Task<User> Get(int id)
+        public async Task<User> GetAsync(int id)
         {
             var cachedUser = _usersCache.GetValue(id.ToString())
                 .FromJson<User>();
@@ -41,16 +41,25 @@ namespace UsersDataBase
             return user;
         }
 
-        public async Task Post(User entity)
+        public async Task PostAsync(User entity)
         {
-            _usersCache.SetValue(entity.ID.ToString(), entity.ToJson());
-
             _usersDbContext.Users.Add(entity);
+
+            await _usersDbContext.SaveChangesAsync();
+
+            _usersCache.SetValue(entity.ID.ToString(), entity.ToJson());
+        }
+
+        public async Task UpdateAsync(User entity)
+        {
+            var user = await _usersDbContext.Users.FirstOrDefaultAsync(u => u.ID == entity.ID);
+
+            user = entity;
 
             await _usersDbContext.SaveChangesAsync();
         }
 
-        public async Task Delete(int id)
+        public async Task DeleteAsync(int id)
         {
             var robotsIds = await _usersDbContext.Robots.Join(
                 _usersDbContext.Users.Where(u => u.ID == id),
@@ -64,7 +73,7 @@ namespace UsersDataBase
             {
                 foreach (var robotId in robotsIds)
                 {
-                    await _robotsManager.Delete(robotId);
+                    await _robotsManager.DeleteAsync(robotId);
                 }
             }
 
@@ -72,11 +81,11 @@ namespace UsersDataBase
 
             if (user != null)
             {
-                _usersCache.Remove(id.ToString());
-
                 _usersDbContext.Users.Remove(user);
 
                 await _usersDbContext.SaveChangesAsync();
+
+                _usersCache.Remove(id.ToString());
             }
         }
     }
